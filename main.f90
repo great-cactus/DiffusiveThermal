@@ -4,24 +4,26 @@ program main
     integer:: xgrid, ygrid
     real(8):: Tin, fuel
     real(8):: dt, t
-    integer:: max_gen, gen
+    integer:: max_gen, gen, print_gen
     real(8):: xlen, ylen
     real(8):: size, Thot
     character(16):: filename
+    integer, parameter:: lout=125
     real(8), allocatable, dimension(:,:):: U, V, Unew, Vnew
     real(8), allocatable, dimension(:)  :: X, Y
 
-    xgrid = 11
+    xgrid = 10000
     ygrid = xgrid
     Tin  = 1.39926
     fuel = 0.93781
     dt = 0.00001
-    max_gen = 10000
+    max_gen = 2000
+    print_gen = 10
     gen = 0
     t = gen*dt
     xlen = 10.
     ylen = xlen
-    size = 2.
+    size = 0.25
     Thot = Tin*3.
     filename = 'out.dat'
 
@@ -36,14 +38,23 @@ program main
     Y = linspace(-ylen/2, ylen/2, ygrid)
     call initialize_uv(U, V, Tin, fuel)
     call make_hotspot(U, X, Y, size, Thot)
-    call output(U, V, X, Y, t, filename)
+    open(lout, file=filename, form='unformatted')
+    write(lout) t
+    write(lout) U
+    write(lout) V
+    write(lout) X
+    write(lout) Y
+    close(lout)
 
-    do while ( gen <= max_gen)
+    do while ( gen <= max_gen )
+        gen = gen + 1
+        t = gen*dt
         call timestep(U, V, X, Y, dt, fuel, Unew, Vnew)
         call copy_2darr(Unew, U)
         call copy_2darr(Vnew, V)
-        gen = gen + 1
-        t = gen*dt
+        if ( mod(gen, print_gen) == 0 ) then
+            call output(U, V, X, Y, t, filename, lout)
+        end if
     end do
 
     stop
@@ -118,22 +129,15 @@ subroutine timestep(U, V, X, Y, dt, fuel, Unew, Vnew)
     return
 end subroutine timestep
 
-subroutine output(U, V, X, Y, t, filename)
+subroutine output(U, V, X, Y, t, filename, lout)
     real(8):: U(:,:), V(:,:), X(:), Y(:)
     real(8):: t
     character(16):: filename
-    integer, parameter:: lout = 125
-    integer:: ios
+    integer, intent(in):: lout
 
     !open(lout, file=filename, form='unformatted', action='write',&
     !    &access='stream', status='old', iostat=ios, position='append')
-    open(lout, file=filename, form='unformatted', status='new', iostat=ios)
-
-    !if (ios /= 0) then
-    !    close(lout)
-    !    open(lout, file=filename, form='unformatted', action='write',&
-    !        &access='stream', status='new', iostat=ios)
-    !end if
+    open(lout, file=filename, form='unformatted', position='append')
 
     write(lout) t
     write(lout) U
