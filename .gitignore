@@ -1,2 +1,5 @@
 nkm_mfr.f
 3D_DTM.f90
+*.o
+*.mod
+driv

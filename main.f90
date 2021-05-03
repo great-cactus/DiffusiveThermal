@@ -40,6 +40,8 @@ program main
 
     do while ( gen <= max_gen)
         call timestep(U, V, X, Y, dt, fuel, Unew, Vnew)
+        call copy_2darr(Unew, U)
+        call copy_2darr(Vnew, V)
         gen = gen + 1
         t = gen*dt
     end do
