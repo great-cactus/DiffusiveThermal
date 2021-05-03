@@ -3,10 +3,12 @@ program main
     implicit none
     integer:: xgrid, ygrid
     real(8):: Tin, fuel
-    real(8):: dt, t, t_end
+    real(8):: dt, t
+    integer:: max_gen, gen
     real(8):: xlen, ylen
     real(8):: size, Thot
-    real(8), allocatable, dimension(:,:):: U, V
+    character(16):: filename
+    real(8), allocatable, dimension(:,:):: U, V, Unew, Vnew
     real(8), allocatable, dimension(:)  :: X, Y
 
     xgrid = 11
@@ -14,20 +16,33 @@ program main
     Tin  = 1.39926
     fuel = 0.93781
     dt = 0.00001
+    max_gen = 10000
+    gen = 0
+    t = gen*dt
     xlen = 10.
     ylen = xlen
-    size = 2
-    Thot = 2
+    size = 2.
+    Thot = Tin*3.
+    filename = 'out.dat'
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
     allocate( U(xgrid, ygrid) )
     allocate( V(xgrid, ygrid) )
+    allocate( Unew(xgrid, ygrid) )
+    allocate( Vnew(xgrid, ygrid) )
 
     X = linspace(-xlen/2, xlen/2, xgrid)
     Y = linspace(-ylen/2, ylen/2, ygrid)
     call initialize_uv(U, V, Tin, fuel)
     call make_hotspot(U, X, Y, size, Thot)
+    call output(U, V, X, Y, t, filename)
+
+    do while ( gen <= max_gen)
+        call timestep(U, V, X, Y, dt, fuel, Unew, Vnew)
+        gen = gen + 1
+        t = gen*dt
+    end do
 
     stop
 contains
@@ -63,13 +78,12 @@ subroutine make_hotspot(U, X, Y, size, Thot)
     return
 end subroutine make_hotspot
 
-real(8) function timestep(U, V, X, Y, dt, fuel) result(Unew, Vnew)
-    real(8):: U(:,:), V(:,:), X(:), Y(:)
+subroutine timestep(U, V, X, Y, dt, fuel, Unew, Vnew)
+    real(8):: U(:,:), V(:,:), Unew(:,:), Vnew(:,:), X(:), Y(:)
     real(8):: dt
     real(8):: dx, dy
     real(8):: fuel
-    real(8), dimension(ubound(U,1),ubound(U,2)):: Unew
-    real(8), dimension(ubound(V,1),ubound(V,2)):: Vnew
+    integer:: i,j
 
     !.... Inner computation
     do i = 2, ubound(U,1)-1
@@ -77,10 +91,10 @@ real(8) function timestep(U, V, X, Y, dt, fuel) result(Unew, Vnew)
             dx = ( X(i+1)-X(i-1) )/2.
             dy = ( Y(i+1)-Y(i-1) )/2.
             Unew(i, j) = U(i,j) + dt&
-&                        (laplacian(U(i-1,j), U(i,j), U(i+1,j), U(i,j-1), U(i,j+1), dx, dy)&
+&                       *(laplacian(U(i-1,j), U(i,j), U(i+1,j), U(i,j-1), U(i,j+1), dx, dy)&
 &                      + f(U(i,j), V(i,j)) )
             Vnew(i, j) = V(i,j) + dt&
-&                        (laplacian(V(i-1,j), V(i,j), V(i+1,j), V(i,j-1), V(i,j+1), dx, dy)&
+&                       *(laplacian(V(i-1,j), V(i,j), V(i+1,j), V(i,j-1), V(i,j+1), dx, dy)&
 &                      + g(U(i,j), V(i,j)) )
         enddo
     enddo
@@ -100,6 +114,33 @@ real(8) function timestep(U, V, X, Y, dt, fuel) result(Unew, Vnew)
     enddo
 
     return
-end function timestep
+end subroutine timestep
+
+subroutine output(U, V, X, Y, t, filename)
+    real(8):: U(:,:), V(:,:), X(:), Y(:)
+    real(8):: t
+    character(16):: filename
+    integer, parameter:: lout = 125
+    integer:: ios
+
+    !open(lout, file=filename, form='unformatted', action='write',&
+    !    &access='stream', status='old', iostat=ios, position='append')
+    open(lout, file=filename, form='unformatted', status='new', iostat=ios)
+
+    !if (ios /= 0) then
+    !    close(lout)
+    !    open(lout, file=filename, form='unformatted', action='write',&
+    !        &access='stream', status='new', iostat=ios)
+    !end if
+
+    write(lout) t
+    write(lout) U
+    write(lout) V
+    write(lout) X
+    write(lout) Y
+    close(lout)
+
+    return
+end subroutine output
 
 end program main

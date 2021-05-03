@@ -1,7 +1,7 @@
 module func
     implicit none
     public
-    real(8), save, private:: eps = 0.0125, a = 2., d = 4.5, h = 45., c = 5.
+    real(8), save, private:: eps = 0.0125, a = 2., h = 45., c = 5.
     logical, save, public :: isConstRead = .false.
 
 contains
@@ -52,7 +52,7 @@ function linspace(x0, x1, nd) result(x)
     real(8), intent(in):: x0, x1
     integer, optional, intent(in):: nd
     real(8), dimension(:), allocatable:: x
-    integer:: n, i, ierr
+    integer:: n, i
     real(8):: dx
 
     if ( present(nd) ) then
@@ -77,6 +77,24 @@ function linspace(x0, x1, nd) result(x)
 
     return
 end function linspace
+
+subroutine copy_2darr(arr, newarr)
+    real(8):: arr(:,:), newarr(:,:)
+    integer:: i, j
+
+    if (( ubound(arr, 1) /= ubound(newarr, 1) ) .or. ( ubound(arr, 2) /= ubound(newarr, 2) )) then
+        call stop_error('arr and newarr has different size.')
+    end if
+
+    do i = 1, ubound(arr,1)
+        do j = 1, ubound(arr,2)
+            newarr(i, j) = arr(i, j)
+        enddo
+    enddo
+
+    return
+end subroutine copy_2darr
+
 
 subroutine stop_error(msg)
 ! Aborts the program with nonzero exit code
