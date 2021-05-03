@@ -3,7 +3,7 @@ program main
     implicit none
     integer:: xgrid, ygrid
     real(8):: Tin, fuel
-    integer:: dt
+    real(8):: dt, t, t_end
     real(8):: xlen, ylen
     real(8):: size, Thot
     real(8), allocatable, dimension(:,:):: U, V
@@ -62,5 +62,44 @@ subroutine make_hotspot(U, X, Y, size, Thot)
 
     return
 end subroutine make_hotspot
+
+real(8) function timestep(U, V, X, Y, dt, fuel) result(Unew, Vnew)
+    real(8):: U(:,:), V(:,:), X(:), Y(:)
+    real(8):: dt
+    real(8):: dx, dy
+    real(8):: fuel
+    real(8), dimension(ubound(U,1),ubound(U,2)):: Unew
+    real(8), dimension(ubound(V,1),ubound(V,2)):: Vnew
+
+    !.... Inner computation
+    do i = 2, ubound(U,1)-1
+        do j = 2, ubound(U,2)-1
+            dx = ( X(i+1)-X(i-1) )/2.
+            dy = ( Y(i+1)-Y(i-1) )/2.
+            Unew(i, j) = U(i,j) + dt&
+&                        (laplacian(U(i-1,j), U(i,j), U(i+1,j), U(i,j-1), U(i,j+1), dx, dy)&
+&                      + f(U(i,j), V(i,j)) )
+            Vnew(i, j) = V(i,j) + dt&
+&                        (laplacian(V(i-1,j), V(i,j), V(i+1,j), V(i,j-1), V(i,j+1), dx, dy)&
+&                      + g(U(i,j), V(i,j)) )
+        enddo
+    enddo
+
+    !.... Boundary computation
+    do i = 1, ubound(U,1)
+        Unew(i, 1)             = U(i, 2)
+        Unew( i, ubound(U,2) ) = U( i, ubound(U,2)-1 )
+        Vnew(i, 1)             = fuel
+        Vnew( i, ubound(V,2) ) = fuel
+    enddo
+    do j = 1, ubound(U,2)
+        Unew(1, j)             = U(1, j)
+        Unew( ubound(U,1), j ) = U( ubound(U,1)-1, j )
+        Vnew(1, j)             = fuel
+        Vnew( ubound(U,1), j ) = fuel
+    enddo
+
+    return
+end function timestep
 
 end program main
