@@ -18,15 +18,15 @@ program main
     Tin  = 1.39926
     fuel = 0.93781
     dt = 0.000001
-    max_gen = 10000
-    print_gen = 100
+    max_gen =   100000
+    print_gen = 1000
     gen = 0
     t = gen*dt
     xlen = 10.
     ylen = xlen
     size = 0.25
     Thot = Tin*3.
-    d = 4.5
+    d = 0.1
     filename = 'out.dat'
 
     allocate( X(xgrid) )
@@ -163,7 +163,7 @@ subroutine out_vtk(step, U, X, Y, lvtk)
     character(40):: filename
     integer:: i,j
 
-    write(filename, "(a,i5.5,a)") "data/temp",int(step),".vtk"
+    write(filename, "(a,i6.6,a)") "data/temp",int(step),".vtk"
     open(lvtk, file=filename)
     write(lvtk, "('# vtk DataFile Version 3.0')")
     write(lvtk, "('test')")
@@ -181,7 +181,7 @@ subroutine out_vtk(step, U, X, Y, lvtk)
 
     !.... Data section
     write(lvtk, "('POINT_DATA ', i9)") ubound(U, 1) * ubound(U, 2)
-    write(lvtk, "('SCALARS temp float')")
+    write(lvtk, "('SCALARS U float')")
     write(lvtk, "('LOOKUP_TABLE default')")
     do i=1, ubound(U, 1)
         do j=1, ubound(U, 2)
