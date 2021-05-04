@@ -7,9 +7,9 @@ program main
     integer:: max_gen, gen, print_gen
     real(8):: xlen, ylen
     real(8):: size, Thot
+    integer:: n_hot
     real(8):: d
-    character(16):: filename
-    integer, parameter:: lout=125, lvtk=126
+    integer, parameter:: lvtk=126
     real(8), allocatable, dimension(:,:):: U, V, Unew, Vnew
     real(8), allocatable, dimension(:)  :: X, Y
 
@@ -24,10 +24,10 @@ program main
     t = gen*dt
     xlen = 10.
     ylen = xlen
-    size = 0.25
+    n_hot = 3
+    size = 0.2
     Thot = Tin*3.
-    d = 0.1
-    filename = 'out.dat'
+    d = 4.5
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
@@ -39,14 +39,8 @@ program main
     X = linspace(-xlen/2, xlen/2, xgrid)
     Y = linspace(-ylen/2, ylen/2, ygrid)
     call initialize_uv(U, V, Tin, fuel)
-    call make_hotspot(U, X, Y, size, Thot)
-    !open(lout, file=filename, form='unformatted')
-    !write(lout) t
-    !write(lout) U
-    !write(lout) V
-    !write(lout) X
-    !write(lout) Y
-    !close(lout)
+    !call make_hotspot(U, X, Y, size, Thot)
+    call make_n_spots(U, X, Y, size, Thot, n_hot)
     call out_vtk(gen, U, X, Y, lvtk)
 
     do while ( gen <= max_gen )
@@ -58,7 +52,6 @@ program main
         call copy_2darr(Vnew, V)
         if ( mod(gen, print_gen) == 0 ) then
             write(*,*) "step =>",gen
-            !call output(U, V, X, Y, t, filename, lout)
             call out_vtk(gen, U, X, Y, lvtk)
         end if
 
@@ -98,6 +91,44 @@ subroutine make_hotspot(U, X, Y, size, Thot)
     return
 end subroutine make_hotspot
 
+subroutine make_n_spots(U, X, Y, size, Thot, n)
+    real(8):: U(:,:), X(:), Y(:)
+    real(8):: size, Thot
+    integer:: n
+    integer, dimension(n,2):: centor_idx
+    real(8), dimension(n):: rand_arr
+    integer:: i_max, i_min, j_max, j_min
+    real(8):: x_centor, y_centor
+    integer:: i, j, k
+
+    !.... Define idxs to be centors
+    i_max = ubound(U, 1)*0.8
+    i_min = ubound(U, 1)*0.2
+    j_max = ubound(U, 2)*0.8
+    j_min = ubound(U, 2)*0.2
+    call random_number(rand_arr)
+    do k=1, n
+        centor_idx(k, 1) = rand_arr(k) * (i_max - i_min) + i_min
+        centor_idx(k, 2) = rand_arr(k) * (j_max - j_min) + j_min
+    end do
+
+    !.... Make hot spot
+    do k = 1, n
+        x_centor = X( centor_idx(k, 1) )
+        y_centor = Y( centor_idx(k, 2) )
+        do i = 1, ubound(U,1)
+            do j = 1, ubound(U,2)
+                if( ( abs(X(i)-x_centor) <= size/2. )&
+              &.and.( abs(Y(j)-y_centor) <= size/2. ) ) then
+                    U(i, j) = Thot
+                endif
+            enddo
+        enddo
+    end do
+
+    return
+end subroutine make_n_spots
+
 subroutine timestep(U, V, X, Y, d, dt, fuel, Unew, Vnew)
     real(8):: U(:,:), V(:,:), Unew(:,:), Vnew(:,:), X(:), Y(:)
     real(8):: dt
@@ -136,24 +167,6 @@ subroutine timestep(U, V, X, Y, d, dt, fuel, Unew, Vnew)
 
     return
 end subroutine timestep
-
-subroutine output(U, V, X, Y, t, filename, lout)
-    real(8):: U(:,:), V(:,:), X(:), Y(:)
-    real(8):: t
-    character(16):: filename
-    integer, intent(in):: lout
-
-    open(lout, file=filename, form='unformatted', position='append')
-
-    write(lout) t
-    write(lout) U
-    write(lout) V
-    write(lout) X
-    write(lout) Y
-    close(lout)
-
-    return
-end subroutine output
 
 subroutine out_vtk(step, U, X, Y, lvtk)
     integer, intent(in):: step
