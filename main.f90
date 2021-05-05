@@ -96,7 +96,6 @@ subroutine make_n_spots(U, X, Y, size, Thot, n)
     real(8):: size, Thot
     integer:: n
     integer, dimension(n,2):: centor_idx
-    real(8), dimension(n):: rand_arr
     integer:: i_max, i_min, j_max, j_min
     real(8):: x_centor, y_centor
     integer:: i, j, k
@@ -106,10 +105,10 @@ subroutine make_n_spots(U, X, Y, size, Thot, n)
     i_min = ubound(U, 1)*0.2
     j_max = ubound(U, 2)*0.8
     j_min = ubound(U, 2)*0.2
-    call random_number(rand_arr)
+
     do k=1, n
-        centor_idx(k, 1) = rand_arr(k) * (i_max - i_min) + i_min
-        centor_idx(k, 2) = rand_arr(k) * (j_max - j_min) + j_min
+        centor_idx(k, 1) = rand_gen() * (i_max - i_min) + i_min
+        centor_idx(k, 2) = rand_gen() * (j_max - j_min) + j_min
     end do
 
     !.... Make hot spot
@@ -155,14 +154,14 @@ subroutine timestep(U, V, X, Y, d, dt, fuel, Unew, Vnew)
     do i = 1, ubound(U,1)
         Unew(i, 1)             = U(i, 2)
         Unew( i, ubound(U,2) ) = U( i, ubound(U,2)-1 )
-        Vnew(i, 1)             = fuel
-        Vnew( i, ubound(V,2) ) = fuel
+        Vnew(i, 1)             = V(i, 2)
+        Vnew( i, ubound(V,2) ) = V( i, ubound(V,2)-1 )
     enddo
     do j = 1, ubound(U,2)
         Unew(1, j)             = U(1, j)
         Unew( ubound(U,1), j ) = U( ubound(U,1)-1, j )
-        Vnew(1, j)             = fuel
-        Vnew( ubound(U,1), j ) = fuel
+        Vnew(1, j)             = V(1, j)
+        Vnew( ubound(U,1), j ) = V( ubound(V,1)-1, j )
     enddo
 
     return

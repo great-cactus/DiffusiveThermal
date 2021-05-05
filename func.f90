@@ -95,6 +95,25 @@ subroutine copy_2darr(arr, newarr)
     return
 end subroutine copy_2darr
 
+real(8) function rand_gen()
+    integer, allocatable, dimension(:):: seed
+    integer:: i, seedsize
+    character( 8):: date
+    character(10):: time
+    character( 5):: zone
+    integer      :: values(8)
+
+    call random_seed(size=seedsize)
+    allocate( seed(seedsize) )
+    call random_seed( get=seed )
+    call date_and_time( date, time, zone, values )
+    seed(seedsize) = values(8)
+    call random_seed(put=seed)
+
+    call random_number(rand_gen)
+
+    return
+end function rand_gen
 
 subroutine stop_error(msg)
 ! Aborts the program with nonzero exit code
