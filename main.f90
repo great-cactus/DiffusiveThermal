@@ -1,6 +1,7 @@
 program main
     use func
     implicit none
+    real(8):: eps, a, h, c
     integer:: xgrid, ygrid
     real(8):: Tin, fuel
     real(8):: dt, t
@@ -9,7 +10,13 @@ program main
     real(8):: size, Thot
     integer:: n_hot
     real(8):: d
-    integer, parameter:: lvtk=126
+    integer, parameter:: linp=124,          lout=125, lvtk=126
+    character(20)     :: inp_file='DT.inp', out_file='DT.out'
+    integer:: ierr
+    integer:: line
+    integer:: pos
+    character(100):: buffer, keyword
+    integer:: lrnd
     real(8), allocatable, dimension(:,:):: U, V, Unew, Vnew
     real(8), allocatable, dimension(:)  :: X, Y
 
@@ -18,8 +25,8 @@ program main
     Tin  = 1.39926
     fuel = 0.93781
     dt = 0.000001
-    max_gen =   1000000
-    print_gen = 10000
+    max_gen =   100000
+    print_gen = 1000
     gen = 0
     t = gen*dt
     xlen = 10.
@@ -27,7 +34,104 @@ program main
     n_hot = 3
     size = 0.2
     Thot = Tin*3.
-    d = 9.
+    d = 6.
+    a = 2
+    h = 45
+    c = 5
+    eps = 0.005
+
+    open (lout, file=out_file, form='formatted')
+        write(lout,"(A)")"*****************************************************"
+        write(lout,"(A)")""
+        write(lout,"(A)")"Starting 2D diffusive thermal computations."
+        write(lout,"(A)")"This code was made by akira tsunoda."
+        write(lout,"(A)")""
+        write(lout,"(A)")"*****************************************************"
+    close(lout)
+
+    open(linp, file=inp_file)
+    do while (ierr == 0)
+        read(linp, '(A)', iostat=ierr) buffer
+        if (ierr == 0) then
+            line = line + 1
+            pos = scan(buffer, '    ')
+            keyword = buffer(1:pos)
+            buffer = buffer(pos+1:)
+            select case (keyword)
+            !##
+            !##    Constants for functions
+            !##
+            !   Constant a
+            case ('CONA')
+                read(buffer, *, iostat=ierr) a
+            !   Constant c
+            case ('CONC')
+                read(buffer, *, iostat=ierr) c
+            !   Constant h
+            case ('CONH')
+                read(buffer, *, iostat=ierr) h
+            !   Constant epsilon
+            case ('CEPS')
+                read(buffer, *, iostat=ierr) eps
+            !   Constant d
+            case ('COND')
+                read(buffer, *, iostat=ierr) d
+            !##
+            !##    Domain parameters
+            !##
+            !   X computation domain size
+            case ('XLEN')
+                read(buffer, *, iostat=ierr) xlen
+            !   Y computation domain size
+            case ('YLEN')
+                read(buffer, *, iostat=ierr) ylen
+            !   X point numbers
+            case ('XNUM')
+                read(buffer, *, iostat=ierr) xgrid
+            !   Y point numbers
+            case ('YNUM')
+                read(buffer, *, iostat=ierr) ygrid
+            !   Inlet U
+            case ('UHOT')
+                read(buffer, *, iostat=ierr) Tin
+            !   Inlet V
+            case ('VHOT')
+                read(buffer, *, iostat=ierr) fuel
+            !##
+            !##    Timestep parameters
+            !##
+            !   Max generation
+            case ('GENM')
+                read(buffer, *, iostat=ierr) max_gen
+            !   Print generation
+            case ('GENP')
+                read(buffer, *, iostat=ierr) print_gen
+            !   computation timestep
+            case ('DT')
+                read(buffer, *, iostat=ierr) dt
+            !##
+            !##    Initial conditions
+            !##
+            !   Initial hotspots number
+            case ('NHOT')
+                read(buffer, *, iostat=ierr) n_hot
+            !   0: hotspot at centor, 1: random hotspot
+            case ('LRND')
+                read(buffer, *, iostat=ierr) lrnd
+            !   size of hotspot
+            case ('SHOT')
+                read(buffer, *, iostat=ierr) size
+            !   magnitude of hotspot
+            case ('THOT')
+                read(buffer, *, iostat=ierr) Thot
+
+            case default
+                print *, 'Invalid keyword detected at line', line
+            end select
+        end if
+    end do
+    close(linp)
+    call read_consts(eps, a, h, c)
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
@@ -39,19 +143,26 @@ program main
     X = linspace(-xlen/2, xlen/2, xgrid)
     Y = linspace(-ylen/2, ylen/2, ygrid)
     call initialize_uv(U, V, Tin, fuel)
-    !call make_hotspot(U, X, Y, size, Thot)
-    call make_n_spots(U, X, Y, size, Thot, n_hot)
+    if (lrnd == 1) then
+        call make_n_spots(U, X, Y, size, Thot, n_hot)
+    else if (lrnd == 0) then
+        call make_hotspot(U, X, Y, size, Thot)
+    else
+        print*, 'Invarid lrand.'
+        stop
+    end if
+
     call out_vtk(gen, U, X, Y, lvtk)
 
     do while ( gen <= max_gen )
         gen = gen + 1
         t = gen*dt
 
-        call timestep(U, V, X, Y, d, dt, fuel, Unew, Vnew)
+        call timestep(U, V, X, Y, d, dt, Unew, Vnew)
         call copy_2darr(Unew, U)
         call copy_2darr(Vnew, V)
         if ( mod(gen, print_gen) == 0 ) then
-            write(*,*) "step =>",gen
+            write(lout,*) "step =>",gen
             call out_vtk(gen, U, X, Y, lvtk)
         end if
 
@@ -101,14 +212,14 @@ subroutine make_n_spots(U, X, Y, size, Thot, n)
     integer:: i, j, k
 
     !.... Define idxs to be centors
-    i_max = ubound(U, 1)*0.8
-    i_min = ubound(U, 1)*0.2
-    j_max = ubound(U, 2)*0.8
-    j_min = ubound(U, 2)*0.2
+    i_max = int( ubound(U, 1)*0.8 )
+    i_min = int( ubound(U, 1)*0.2 )
+    j_max = int( ubound(U, 2)*0.8 )
+    j_min = int( ubound(U, 2)*0.2 )
 
     do k=1, n
-        centor_idx(k, 1) = rand_gen() * (i_max - i_min) + i_min
-        centor_idx(k, 2) = rand_gen() * (j_max - j_min) + j_min
+        centor_idx(k, 1) = int( rand_gen() * (i_max - i_min) + i_min )
+        centor_idx(k, 2) = int( rand_gen() * (j_max - j_min) + j_min )
     end do
 
     !.... Make hot spot
@@ -128,11 +239,10 @@ subroutine make_n_spots(U, X, Y, size, Thot, n)
     return
 end subroutine make_n_spots
 
-subroutine timestep(U, V, X, Y, d, dt, fuel, Unew, Vnew)
+subroutine timestep(U, V, X, Y, d, dt, Unew, Vnew)
     real(8):: U(:,:), V(:,:), Unew(:,:), Vnew(:,:), X(:), Y(:)
     real(8):: dt
     real(8):: dx, dy
-    real(8):: fuel
     real(8):: d
     integer:: i,j
 
@@ -175,7 +285,7 @@ subroutine out_vtk(step, U, X, Y, lvtk)
     character(40):: filename
     integer:: i,j
 
-    write(filename, "(a,i8.8,a)") "data/temp",int(step),".vtk"
+    write(filename, "(a,i6.6,a)") "data/temp",int(step),".vtk"
     open(lvtk, file=filename)
     write(lvtk, "('# vtk DataFile Version 3.0')")
     write(lvtk, "('test')")

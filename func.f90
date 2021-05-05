@@ -1,15 +1,19 @@
 module func
     implicit none
     public
-    real(8), save, private:: eps = 0.0005, a = 2., h = 45., c = 5.
-    logical, save, public :: isConstRead = .false.
+    real(8), save, private:: eps = 0.0012, a = 2., h = 45., c = 5.
 
 contains
 
-logical function const_read()
-    const_read = isConstRead
+subroutine read_consts(epsr, ar, hr, cr)
+    real(8):: epsr, ar, hr, cr
+    eps = epsr
+    a   = ar
+    h   = hr
+    c   = cr
+
     return
-end function const_read
+end subroutine read_consts
 
 !##
 !.... Here are the functions used for computation
@@ -97,7 +101,7 @@ end subroutine copy_2darr
 
 real(8) function rand_gen()
     integer, allocatable, dimension(:):: seed
-    integer:: i, seedsize
+    integer:: seedsize
     character( 8):: date
     character(10):: time
     character( 5):: zone
