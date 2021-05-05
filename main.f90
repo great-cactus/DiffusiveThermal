@@ -18,8 +18,8 @@ program main
     Tin  = 1.39926
     fuel = 0.93781
     dt = 0.000001
-    max_gen =   100000
-    print_gen = 1000
+    max_gen =   1000000
+    print_gen = 10000
     gen = 0
     t = gen*dt
     xlen = 10.
@@ -27,7 +27,7 @@ program main
     n_hot = 3
     size = 0.2
     Thot = Tin*3.
-    d = 6.
+    d = 9.
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
@@ -175,7 +175,7 @@ subroutine out_vtk(step, U, X, Y, lvtk)
     character(40):: filename
     integer:: i,j
 
-    write(filename, "(a,i6.6,a)") "data/temp",int(step),".vtk"
+    write(filename, "(a,i8.8,a)") "data/temp",int(step),".vtk"
     open(lvtk, file=filename)
     write(lvtk, "('# vtk DataFile Version 3.0')")
     write(lvtk, "('test')")
