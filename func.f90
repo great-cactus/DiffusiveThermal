@@ -1,7 +1,7 @@
 module func
     implicit none
     public
-    real(8), save, private:: eps = 0.0005, a = 2., h = 45., c = 5.
+    real(8), save, private:: eps = 0.0012, a = 2., h = 45., c = 5.
     logical, save, public :: isConstRead = .false.
 
 contains

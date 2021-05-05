@@ -27,7 +27,7 @@ program main
     n_hot = 3
     size = 0.2
     Thot = Tin*3.
-    d = 4.5
+    d = 6.
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
@@ -158,9 +158,9 @@ subroutine timestep(U, V, X, Y, d, dt, fuel, Unew, Vnew)
         Vnew( i, ubound(V,2) ) = V( i, ubound(V,2)-1 )
     enddo
     do j = 1, ubound(U,2)
-        Unew(1, j)             = U(1, j)
+        Unew(1, j)             = U(2, j)
         Unew( ubound(U,1), j ) = U( ubound(U,1)-1, j )
-        Vnew(1, j)             = V(1, j)
+        Vnew(1, j)             = V(2, j)
         Vnew( ubound(U,1), j ) = V( ubound(V,1)-1, j )
     enddo
 
