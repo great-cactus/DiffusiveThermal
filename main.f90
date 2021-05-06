@@ -58,6 +58,8 @@ program main
             keyword = buffer(1:pos)
             buffer = buffer(pos+1:)
             select case (keyword)
+            case ('#')!    Comment
+                print*,"comment"
             !##
             !##    Constants for functions
             !##
@@ -132,6 +134,33 @@ program main
     end do
     close(linp)
     call read_consts(eps, a, h, c)
+
+    open (lout, file=out_file, form='formatted', position='append')
+        write(lout,"(A)")"*****************************************************"
+        write(lout,"(A)")""
+        write(lout,"(A)")"Inputed conditions were shown below."
+        write(lout,"(A)")""
+        write(lout,"(A)")"*****************************************************"
+        write(lout,"(A,f10.6)")'eps:', eps
+        write(lout,"(A,f10.6)")'a:', a
+        write(lout,"(A,f10.6)")'c:', c
+        write(lout,"(A,f10.6)")'h:', h
+        write(lout,"(A,f10.6)")'d:', d
+        write(lout,"(A,f10.6)")'xlen:', xlen
+        write(lout,"(A,f10.6)")'ylen:', ylen
+        write(lout,"(A,i8.7)")'xnum:', xgrid
+        write(lout,"(A,i8.7)")'ynum:', ygrid
+        write(lout,"(A,f10.6)")'uin:', Tin
+        write(lout,"(A,f10.6)")'vin:', fuel
+        write(lout,"(A,i8.7)")'maxgen:', max_gen
+        write(lout,"(A,f10.6)")'printgen:', print_gen
+        write(lout,"(A,f10.6)")'dt:', dt
+        write(lout,"(A,f10.6)")'nhot:', n_hot
+        write(lout,"(A,i8.7)")'isRandom:', lrnd
+        write(lout,"(A,f10.6)")'size_of_hot:', size
+        write(lout,"(A,f10.6)")'uhot:', Thot
+    close(lout)
+    stop
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
