@@ -314,7 +314,7 @@ subroutine out_vtk(step, U, X, Y, lvtk)
     character(40):: filename
     integer:: i,j
 
-    write(filename, "(a,i6.6,a)") "data/temp",int(step),".vtk"
+    write(filename, "(a,i8.8,a)") "data/temp",int(step),".vtk"
     open(lvtk, file=filename)
     write(lvtk, "('# vtk DataFile Version 3.0')")
     write(lvtk, "('test')")
