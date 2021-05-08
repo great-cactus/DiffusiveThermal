@@ -153,12 +153,13 @@ program main
         write(lout,"(A,f10.6)")'uin:', Tin
         write(lout,"(A,f10.6)")'vin:', fuel
         write(lout,"(A,i8.7)")'maxgen:', max_gen
-        write(lout,"(A,f10.6)")'printgen:', print_gen
+        write(lout,"(A,i8.7)")'printgen:', print_gen
         write(lout,"(A,f10.6)")'dt:', dt
-        write(lout,"(A,f10.6)")'nhot:', n_hot
+        write(lout,"(A,i8.7)")'nhot:', n_hot
         write(lout,"(A,i8.7)")'isRandom:', lrnd
         write(lout,"(A,f10.6)")'size_of_hot:', size
         write(lout,"(A,f10.6)")'uhot:', Thot
+        write(lout,"(A)")"*****************************************************"
     close(lout)
     stop
 
