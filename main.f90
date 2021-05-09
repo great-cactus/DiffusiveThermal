@@ -33,12 +33,13 @@ program main
     ylen = xlen
     n_hot = 3
     size = 0.2
-    Thot = Tin*3.
-    d = 6.
+    Thot = 10.
+    lrnd = 1
+    d = 2.
     a = 2
     h = 45
     c = 5
-    eps = 0.005
+    eps = 0.001
 
     open (lout, file=out_file, form='formatted')
         write(lout,"(A)")"*****************************************************"
@@ -49,7 +50,8 @@ program main
         write(lout,"(A)")"*****************************************************"
     close(lout)
 
-    open(linp, file=inp_file)
+    open(linp, file=inp_file, form='formatted')
+    ierr = 0
     do while (ierr == 0)
         read(linp, '(A)', iostat=ierr) buffer
         if (ierr == 0) then
@@ -94,10 +96,10 @@ program main
             case ('YNUM')
                 read(buffer, *, iostat=ierr) ygrid
             !   Inlet U
-            case ('UHOT')
+            case ('UINT')
                 read(buffer, *, iostat=ierr) Tin
             !   Inlet V
-            case ('VHOT')
+            case ('VINT')
                 read(buffer, *, iostat=ierr) fuel
             !##
             !##    Timestep parameters
@@ -141,27 +143,26 @@ program main
         write(lout,"(A)")"Inputed conditions were shown below."
         write(lout,"(A)")""
         write(lout,"(A)")"*****************************************************"
-        write(lout,"(A,f10.6)")'eps:', eps
-        write(lout,"(A,f10.6)")'a:', a
-        write(lout,"(A,f10.6)")'c:', c
-        write(lout,"(A,f10.6)")'h:', h
-        write(lout,"(A,f10.6)")'d:', d
-        write(lout,"(A,f10.6)")'xlen:', xlen
-        write(lout,"(A,f10.6)")'ylen:', ylen
+        write(lout,"(A,f8.6)")'eps:', eps
+        write(lout,"(A,f8.6)")'a:', a
+        write(lout,"(A,f8.6)")'c:', c
+        write(lout,"(A,f9.6)")'h:', h
+        write(lout,"(A,f8.6)")'d:', d
+        write(lout,"(A,f9.6)")'xlen:', xlen
+        write(lout,"(A,f9.6)")'ylen:', ylen
         write(lout,"(A,i8.7)")'xnum:', xgrid
         write(lout,"(A,i8.7)")'ynum:', ygrid
-        write(lout,"(A,f10.6)")'uin:', Tin
-        write(lout,"(A,f10.6)")'vin:', fuel
+        write(lout,"(A,f8.6)")'uin:', Tin
+        write(lout,"(A,f8.6)")'vin:', fuel
         write(lout,"(A,i8.7)")'maxgen:', max_gen
         write(lout,"(A,i8.7)")'printgen:', print_gen
-        write(lout,"(A,f10.6)")'dt:', dt
-        write(lout,"(A,i8.7)")'nhot:', n_hot
-        write(lout,"(A,i8.7)")'isRandom:', lrnd
-        write(lout,"(A,f10.6)")'size_of_hot:', size
-        write(lout,"(A,f10.6)")'uhot:', Thot
+        write(lout,"(A,f8.6)")'dt:', dt
+        write(lout,"(A,i1.1)")'nhot:', n_hot
+        write(lout,"(A,i1.1)")'isRandom:', lrnd
+        write(lout,"(A,f8.6)")'size_of_hot:', size
+        write(lout,"(A,f8.6)")'uhot:', Thot
         write(lout,"(A)")"*****************************************************"
     close(lout)
-    stop
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
@@ -183,7 +184,6 @@ program main
     end if
 
     call out_vtk(gen, U, X, Y, lvtk)
-
     do while ( gen <= max_gen )
         gen = gen + 1
         t = gen*dt
@@ -192,10 +192,11 @@ program main
         call copy_2darr(Unew, U)
         call copy_2darr(Vnew, V)
         if ( mod(gen, print_gen) == 0 ) then
-            write(lout,*) "step =>",gen
+            open (lout, file=out_file, form='formatted', position='append')
+                write(lout,*) "step =>",gen
+            close(lout)
             call out_vtk(gen, U, X, Y, lvtk)
         end if
-
     end do
 
     stop
