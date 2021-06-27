@@ -42,8 +42,8 @@ real(8) function laplacian(fi_bw, fij, fi_fw, fj_bw, fj_fw, di, dj)
     real(8):: fi_bw, fij, fi_fw, fj_bw, fj_fw
     real(8):: di, dj
 
-    laplacian = ( fi_fw- 2*fij + fi_bw )/(di*di)&
-    &         + ( fj_fw- 2*fij + fj_bw )/(dj*dj)
+    laplacian = ( fi_fw - 2*fij + fi_bw )/(di*di)&
+    &         + ( fj_fw - 2*fij + fj_bw )/(dj*dj)
     return
 end function laplacian
 !.... end
@@ -123,9 +123,17 @@ subroutine stop_error(msg)
 ! Aborts the program with nonzero exit code
 ! stop_error() uses the statement "stop 1" which returns an exit code
 ! 1 and prints the messeage.
-
+    integer, parameter:: lout=125
+    character(20)     :: out_file='DT.out'
     character(len=*):: msg
-    print *, msg
+
+    open(lout, file=out_file, form='formatted',&
+        &position="append", action='write', status='old')
+
+        write(lout, "(A)") msg
+
+    close(lout)
+
     stop 1
 end subroutine stop_error
 !.... end

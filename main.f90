@@ -41,34 +41,6 @@ program main
                  &xlen, ylen, xgrid, ygrid, Tin, fuel,&
                  &max_gen, print_gen, dt,&
                  &n_hot, lrnd, size, Thot)
-    call read_consts(eps, a, h, c)
-
-    open (lout, file=out_file, form='formatted', position='append')
-        write(lout,"(A)")"*****************************************************"
-        write(lout,"(A)")""
-        write(lout,"(A)")"Inputed conditions were shown below."
-        write(lout,"(A)")""
-        write(lout,"(A)")"*****************************************************"
-        write(lout,"(A,f8.6)")'eps:', eps
-        write(lout,"(A,f8.6)")'a:', a
-        write(lout,"(A,f8.6)")'c:', c
-        write(lout,"(A,f9.6)")'h:', h
-        write(lout,"(A,f8.6)")'d:', d
-        write(lout,"(A,f9.6)")'xlen:', xlen
-        write(lout,"(A,f9.6)")'ylen:', ylen
-        write(lout,"(A,i8.7)")'xnum:', xgrid
-        write(lout,"(A,i8.7)")'ynum:', ygrid
-        write(lout,"(A,f8.6)")'uin:', Tin
-        write(lout,"(A,f8.6)")'vin:', fuel
-        write(lout,"(A,i8.7)")'maxgen:', max_gen
-        write(lout,"(A,i8.7)")'printgen:', print_gen
-        write(lout,"(A,f8.6)")'dt:', dt
-        write(lout,"(A,i1.1)")'nhot:', n_hot
-        write(lout,"(A,i1.1)")'isRandom:', lrnd
-        write(lout,"(A,f8.6)")'size_of_hot:', size
-        write(lout,"(A,f8.6)")'uhot:', Thot
-        write(lout,"(A)")"*****************************************************"
-    close(lout)
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
@@ -85,11 +57,10 @@ program main
     else if (lrnd == 0) then
         call make_hotspot(U, X, Y, size, Thot)
     else
-        print*, 'Invarid lrand.'
-        stop
+        call stop_error('Invarid lrand.')
     end if
 
-    call out_vtk(gen, U, X, Y, lvtk)
+    call out_vtk(gen, U, X, Y)
     do while ( gen <= max_gen )
         gen = gen + 1
         t = gen*dt
@@ -98,10 +69,13 @@ program main
         call copy_2darr(Unew, U)
         call copy_2darr(Vnew, V)
         if ( mod(gen, print_gen) == 0 ) then
-            open (lout, file=out_file, form='formatted', position='append')
+            open (lout, file=out_file, form='formatted',&
+                 &position='append', action='write', status='old')
+
                 write(lout,*) "step =>",gen
+
             close(lout)
-            call out_vtk(gen, U, X, Y, lvtk)
+            call out_vtk(gen, U, X, Y)
         end if
     end do
 
@@ -215,6 +189,7 @@ subroutine timestep(U, V, X, Y, d, dt, Unew, Vnew)
 end subroutine timestep
 
 subroutine out_vtk(step, U, X, Y)
+    implicit none
     integer, intent(in):: step
     real(8), intent(in):: U(:,:)
     real(8), intent(in):: X(:), Y(:)
@@ -223,30 +198,34 @@ subroutine out_vtk(step, U, X, Y)
     integer:: i,j
 
     write(filename, "(a,i8.8,a)") "data/temp",int(step),".vtk"
-    open(lvtk, file=filename)
-    write(lvtk, "('# vtk DataFile Version 3.0')")
-    write(lvtk, "('test')")
-    write(lvtk, "('ASCII ')")
+    open(lvtk, file=filename, action='write',&
+        &form='formatted', position='rewind')
 
-    !.... Axis section
-    write(lvtk, "('DATASET STRUCTURED_GRID')")
-    write(lvtk, "('DIMENSIONS ', 3(1x,i5))") ubound(X,1), ubound(X,1), 1
-    write(lvtk, "('POINTS ',i9,' float')") ubound(X,1)*ubound(Y,1)
-    do i=1, ubound(X, 1)
-        do j=1, ubound(Y, 1)
-            write(lvtk, *) X(i), Y(j), 0.0
-        end do
-    end do
+        !.... Initialize vtk
+        write(lvtk, "('# vtk DataFile Version 3.0')")
+        write(lvtk, "('test')")
+        write(lvtk, "('ASCII ')")
 
-    !.... Data section
-    write(lvtk, "('POINT_DATA ', i9)") ubound(U, 1) * ubound(U, 2)
-    write(lvtk, "('SCALARS U float')")
-    write(lvtk, "('LOOKUP_TABLE default')")
-    do i=1, ubound(U, 1)
-        do j=1, ubound(U, 2)
-            write(lvtk,*) U(i,j)
+        !.... Axis section
+        write(lvtk, "('DATASET STRUCTURED_GRID')")
+        write(lvtk, "('DIMENSIONS ', 3(1x,i5))") ubound(X,1), ubound(X,1), 1
+        write(lvtk, "('POINTS ',i9,' float')") ubound(X,1)*ubound(Y,1)
+        do i=1, ubound(X, 1)
+            do j=1, ubound(Y, 1)
+                write(lvtk, *) X(i), Y(j), 0.0
+            end do
         end do
-    end do
+
+        !.... Data section
+        write(lvtk, "('POINT_DATA ', i9)") ubound(U, 1) * ubound(U, 2)
+        write(lvtk, "('SCALARS U float')")
+        write(lvtk, "('LOOKUP_TABLE default')")
+        do i=1, ubound(U, 1)
+            do j=1, ubound(U, 2)
+                write(lvtk,*) U(i,j)
+            end do
+        end do
+
     close(lvtk)
 
     return
@@ -258,7 +237,7 @@ subroutine read_inp(a, c, h, eps, d,&
                    &n_hot, lrnd, size, Thot)
     implicit none
     integer:: line, ierr, pos
-    character(100):: buffer, keyword
+    character(100):: buffer, keyword, err_msg
     real(8):: eps, a, h, c
     integer:: xgrid, ygrid
     real(8):: Tin, fuel
@@ -272,100 +251,120 @@ subroutine read_inp(a, c, h, eps, d,&
     integer, parameter:: linp=124,          lout=125
     character(20)     :: inp_file='DT.inp', out_file='DT.out'
 
-    open (lout, file=out_file, form='formatted')
+    open (lout, file=out_file, form='formatted',&
+         &position="rewind", action='write')
+
         write(lout,"(A)")"*****************************************************"
         write(lout,"(A)")""
         write(lout,"(A)")"Starting 2D diffusive thermal computations."
         write(lout,"(A)")"This code was made by akira tsunoda."
         write(lout,"(A)")""
         write(lout,"(A)")"*****************************************************"
+
+    close (lout)
+
+    open(linp, file=inp_file, form='formatted',&
+        &position='rewind', action='read', status='old')
+    open(lout, file=out_file, form='formatted',&
+        &position="append", action='write', status='old')
+
+        write(lout, "(A)") ""
+        write(lout, "(A)") "Start reading input file.........."
+        write(lout, "(A)") ""
+
+        ierr = 0
+        do while (ierr == 0)
+            read(linp, '(A)', iostat=ierr) buffer
+            write(lout, "(A)") buffer
+            if (ierr == 0) then
+                line = line + 1
+                pos = scan(buffer, '    ')
+                keyword = buffer(1:pos)
+                buffer = buffer(pos+1:)
+                select case (keyword)
+                    case ('#')!    Comment
+                        continue
+                    !##
+                    !##    Constants for functions
+                    !##
+                    !   Constant a
+                    case ('CONA')
+                        read(buffer, *, iostat=ierr) a
+                    !   Constant c
+                    case ('CONC')
+                        read(buffer, *, iostat=ierr) c
+                    !   Constant h
+                    case ('CONH')
+                        read(buffer, *, iostat=ierr) h
+                    !   Constant epsilon
+                    case ('CEPS')
+                        read(buffer, *, iostat=ierr) eps
+                    !   Constant d
+                    case ('COND')
+                        read(buffer, *, iostat=ierr) d
+                    !##
+                    !##    Domain parameters
+                    !##
+                    !   X computation domain size
+                    case ('XLEN')
+                        read(buffer, *, iostat=ierr) xlen
+                    !   Y computation domain size
+                    case ('YLEN')
+                        read(buffer, *, iostat=ierr) ylen
+                    !   X point numbers
+                    case ('XNUM')
+                        read(buffer, *, iostat=ierr) xgrid
+                    !   Y point numbers
+                    case ('YNUM')
+                        read(buffer, *, iostat=ierr) ygrid
+                    !   Inlet U
+                    case ('UINT')
+                        read(buffer, *, iostat=ierr) Tin
+                    !   Inlet V
+                    case ('VINT')
+                        read(buffer, *, iostat=ierr) fuel
+                    !##
+                    !##    Timestep parameters
+                    !##
+                    !   Max generation
+                    case ('GENM')
+                        read(buffer, *, iostat=ierr) max_gen
+                    !   Print generation
+                    case ('GENP')
+                        read(buffer, *, iostat=ierr) print_gen
+                    !   computation timestep
+                    case ('DT')
+                        read(buffer, *, iostat=ierr) dt
+                    !##
+                    !##    Initial conditions
+                    !##
+                    !   Initial hotspots number
+                    case ('NHOT')
+                        read(buffer, *, iostat=ierr) n_hot
+                    !   0: hotspot at centor, 1: random hotspot
+                    case ('LRND')
+                        read(buffer, *, iostat=ierr) lrnd
+                    !   size of hotspot
+                    case ('SHOT')
+                        read(buffer, *, iostat=ierr) size
+                    !   magnitude of hotspot
+                    case ('THOT')
+                        read(buffer, *, iostat=ierr) Thot
+
+                    case default
+                        write(err_msg, "( a,i2 )") 'invalid keyword detected at line', line
+                        call stop_error(err_msg)
+                end select
+            end if
+        end do
+
+        write(lout, "(A)") ""
+        write(lout, "(A)") "Finish reading input file successfully."
+        write(lout, "(A)") ""
     close(lout)
-
-    open(linp, file=inp_file, form='formatted')
-    ierr = 0
-    do while (ierr == 0)
-        read(linp, '(A)', iostat=ierr) buffer
-        if (ierr == 0) then
-            line = line + 1
-            pos = scan(buffer, '    ')
-            keyword = buffer(1:pos)
-            buffer = buffer(pos+1:)
-            select case (keyword)
-            case ('#')!    Comment
-                print*,"comment"
-            !##
-            !##    Constants for functions
-            !##
-            !   Constant a
-            case ('CONA')
-                read(buffer, *, iostat=ierr) a
-            !   Constant c
-            case ('CONC')
-                read(buffer, *, iostat=ierr) c
-            !   Constant h
-            case ('CONH')
-                read(buffer, *, iostat=ierr) h
-            !   Constant epsilon
-            case ('CEPS')
-                read(buffer, *, iostat=ierr) eps
-            !   Constant d
-            case ('COND')
-                read(buffer, *, iostat=ierr) d
-            !##
-            !##    Domain parameters
-            !##
-            !   X computation domain size
-            case ('XLEN')
-                read(buffer, *, iostat=ierr) xlen
-            !   Y computation domain size
-            case ('YLEN')
-                read(buffer, *, iostat=ierr) ylen
-            !   X point numbers
-            case ('XNUM')
-                read(buffer, *, iostat=ierr) xgrid
-            !   Y point numbers
-            case ('YNUM')
-                read(buffer, *, iostat=ierr) ygrid
-            !   Inlet U
-            case ('UINT')
-                read(buffer, *, iostat=ierr) Tin
-            !   Inlet V
-            case ('VINT')
-                read(buffer, *, iostat=ierr) fuel
-            !##
-            !##    Timestep parameters
-            !##
-            !   Max generation
-            case ('GENM')
-                read(buffer, *, iostat=ierr) max_gen
-            !   Print generation
-            case ('GENP')
-                read(buffer, *, iostat=ierr) print_gen
-            !   computation timestep
-            case ('DT')
-                read(buffer, *, iostat=ierr) dt
-            !##
-            !##    Initial conditions
-            !##
-            !   Initial hotspots number
-            case ('NHOT')
-                read(buffer, *, iostat=ierr) n_hot
-            !   0: hotspot at centor, 1: random hotspot
-            case ('LRND')
-                read(buffer, *, iostat=ierr) lrnd
-            !   size of hotspot
-            case ('SHOT')
-                read(buffer, *, iostat=ierr) size
-            !   magnitude of hotspot
-            case ('THOT')
-                read(buffer, *, iostat=ierr) Thot
-
-            case default
-                print *, 'Invalid keyword detected at line', line
-            end select
-        end if
-    end do
     close(linp)
+
+    call read_consts(eps, a, h, c)
 
     return
 end subroutine read_inp
