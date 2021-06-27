@@ -10,12 +10,8 @@ program main
     real(8):: size, Thot
     integer:: n_hot
     real(8):: d
-    integer, parameter:: linp=124,          lout=125, lvtk=126
-    character(20)     :: inp_file='DT.inp', out_file='DT.out'
-    integer:: ierr
-    integer:: line
-    integer:: pos
-    character(100):: buffer, keyword
+    integer, parameter:: lout=125
+    character(20)     :: out_file='DT.out'
     integer:: lrnd
     real(8), allocatable, dimension(:,:):: U, V, Unew, Vnew
     real(8), allocatable, dimension(:)  :: X, Y
@@ -41,100 +37,10 @@ program main
     c = 5
     eps = 0.001
 
-    open (lout, file=out_file, form='formatted')
-        write(lout,"(A)")"*****************************************************"
-        write(lout,"(A)")""
-        write(lout,"(A)")"Starting 2D diffusive thermal computations."
-        write(lout,"(A)")"This code was made by akira tsunoda."
-        write(lout,"(A)")""
-        write(lout,"(A)")"*****************************************************"
-    close(lout)
-
-    open(linp, file=inp_file, form='formatted')
-    ierr = 0
-    do while (ierr == 0)
-        read(linp, '(A)', iostat=ierr) buffer
-        if (ierr == 0) then
-            line = line + 1
-            pos = scan(buffer, '    ')
-            keyword = buffer(1:pos)
-            buffer = buffer(pos+1:)
-            select case (keyword)
-            case ('#')!    Comment
-                print*,"comment"
-            !##
-            !##    Constants for functions
-            !##
-            !   Constant a
-            case ('CONA')
-                read(buffer, *, iostat=ierr) a
-            !   Constant c
-            case ('CONC')
-                read(buffer, *, iostat=ierr) c
-            !   Constant h
-            case ('CONH')
-                read(buffer, *, iostat=ierr) h
-            !   Constant epsilon
-            case ('CEPS')
-                read(buffer, *, iostat=ierr) eps
-            !   Constant d
-            case ('COND')
-                read(buffer, *, iostat=ierr) d
-            !##
-            !##    Domain parameters
-            !##
-            !   X computation domain size
-            case ('XLEN')
-                read(buffer, *, iostat=ierr) xlen
-            !   Y computation domain size
-            case ('YLEN')
-                read(buffer, *, iostat=ierr) ylen
-            !   X point numbers
-            case ('XNUM')
-                read(buffer, *, iostat=ierr) xgrid
-            !   Y point numbers
-            case ('YNUM')
-                read(buffer, *, iostat=ierr) ygrid
-            !   Inlet U
-            case ('UINT')
-                read(buffer, *, iostat=ierr) Tin
-            !   Inlet V
-            case ('VINT')
-                read(buffer, *, iostat=ierr) fuel
-            !##
-            !##    Timestep parameters
-            !##
-            !   Max generation
-            case ('GENM')
-                read(buffer, *, iostat=ierr) max_gen
-            !   Print generation
-            case ('GENP')
-                read(buffer, *, iostat=ierr) print_gen
-            !   computation timestep
-            case ('DT')
-                read(buffer, *, iostat=ierr) dt
-            !##
-            !##    Initial conditions
-            !##
-            !   Initial hotspots number
-            case ('NHOT')
-                read(buffer, *, iostat=ierr) n_hot
-            !   0: hotspot at centor, 1: random hotspot
-            case ('LRND')
-                read(buffer, *, iostat=ierr) lrnd
-            !   size of hotspot
-            case ('SHOT')
-                read(buffer, *, iostat=ierr) size
-            !   magnitude of hotspot
-            case ('THOT')
-                read(buffer, *, iostat=ierr) Thot
-
-            case default
-                print *, 'Invalid keyword detected at line', line
-            end select
-        end if
-    end do
-    close(linp)
+    call read_inp(a, c, h, eps, d,&
+                 &xlen, ylen, xgrid, ygrid, Tin, fuel,&
+                 &max_gen, print_gen, dt,&
+                 &n_hot, lrnd, size, Thot)
     call read_consts(eps, a, h, c)
 
     open (lout, file=out_file, form='formatted', position='append')
@@ -308,11 +214,11 @@ subroutine timestep(U, V, X, Y, d, dt, Unew, Vnew)
     return
 end subroutine timestep
 
-subroutine out_vtk(step, U, X, Y, lvtk)
+subroutine out_vtk(step, U, X, Y)
     integer, intent(in):: step
-    integer, intent(in):: lvtk
     real(8), intent(in):: U(:,:)
     real(8), intent(in):: X(:), Y(:)
+    integer, parameter:: lvtk=126
     character(40):: filename
     integer:: i,j
 
@@ -345,5 +251,123 @@ subroutine out_vtk(step, U, X, Y, lvtk)
 
     return
 end subroutine out_vtk
+
+subroutine read_inp(a, c, h, eps, d,&
+                   &xlen, ylen, xgrid, ygrid, Tin, fuel,&
+                   &max_gen, print_gen, dt,&
+                   &n_hot, lrnd, size, Thot)
+    implicit none
+    integer:: line, ierr, pos
+    character(100):: buffer, keyword
+    real(8):: eps, a, h, c
+    integer:: xgrid, ygrid
+    real(8):: Tin, fuel
+    real(8):: dt
+    integer:: max_gen, print_gen
+    real(8):: xlen, ylen
+    real(8):: size, Thot
+    integer:: n_hot
+    real(8):: d
+    integer:: lrnd
+    integer, parameter:: linp=124,          lout=125
+    character(20)     :: inp_file='DT.inp', out_file='DT.out'
+
+    open (lout, file=out_file, form='formatted')
+        write(lout,"(A)")"*****************************************************"
+        write(lout,"(A)")""
+        write(lout,"(A)")"Starting 2D diffusive thermal computations."
+        write(lout,"(A)")"This code was made by akira tsunoda."
+        write(lout,"(A)")""
+        write(lout,"(A)")"*****************************************************"
+    close(lout)
+
+    open(linp, file=inp_file, form='formatted')
+    ierr = 0
+    do while (ierr == 0)
+        read(linp, '(A)', iostat=ierr) buffer
+        if (ierr == 0) then
+            line = line + 1
+            pos = scan(buffer, '    ')
+            keyword = buffer(1:pos)
+            buffer = buffer(pos+1:)
+            select case (keyword)
+            case ('#')!    Comment
+                print*,"comment"
+            !##
+            !##    Constants for functions
+            !##
+            !   Constant a
+            case ('CONA')
+                read(buffer, *, iostat=ierr) a
+            !   Constant c
+            case ('CONC')
+                read(buffer, *, iostat=ierr) c
+            !   Constant h
+            case ('CONH')
+                read(buffer, *, iostat=ierr) h
+            !   Constant epsilon
+            case ('CEPS')
+                read(buffer, *, iostat=ierr) eps
+            !   Constant d
+            case ('COND')
+                read(buffer, *, iostat=ierr) d
+            !##
+            !##    Domain parameters
+            !##
+            !   X computation domain size
+            case ('XLEN')
+                read(buffer, *, iostat=ierr) xlen
+            !   Y computation domain size
+            case ('YLEN')
+                read(buffer, *, iostat=ierr) ylen
+            !   X point numbers
+            case ('XNUM')
+                read(buffer, *, iostat=ierr) xgrid
+            !   Y point numbers
+            case ('YNUM')
+                read(buffer, *, iostat=ierr) ygrid
+            !   Inlet U
+            case ('UINT')
+                read(buffer, *, iostat=ierr) Tin
+            !   Inlet V
+            case ('VINT')
+                read(buffer, *, iostat=ierr) fuel
+            !##
+            !##    Timestep parameters
+            !##
+            !   Max generation
+            case ('GENM')
+                read(buffer, *, iostat=ierr) max_gen
+            !   Print generation
+            case ('GENP')
+                read(buffer, *, iostat=ierr) print_gen
+            !   computation timestep
+            case ('DT')
+                read(buffer, *, iostat=ierr) dt
+            !##
+            !##    Initial conditions
+            !##
+            !   Initial hotspots number
+            case ('NHOT')
+                read(buffer, *, iostat=ierr) n_hot
+            !   0: hotspot at centor, 1: random hotspot
+            case ('LRND')
+                read(buffer, *, iostat=ierr) lrnd
+            !   size of hotspot
+            case ('SHOT')
+                read(buffer, *, iostat=ierr) size
+            !   magnitude of hotspot
+            case ('THOT')
+                read(buffer, *, iostat=ierr) Thot
+
+            case default
+                print *, 'Invalid keyword detected at line', line
+            end select
+        end if
+    end do
+    close(linp)
+
+    return
+end subroutine read_inp
 
 end program main
