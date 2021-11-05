@@ -10,9 +10,11 @@ program main
     real(8):: size, Thot
     integer:: n_hot
     real(8):: d
+    integer:: lrnd
+    integer:: is_square_hot, is_planer_hot
+    real(8):: width, height
     integer, parameter:: lout=125
     character(20)     :: out_file='DT.out'
-    integer:: lrnd
     real(8), allocatable, dimension(:,:):: U, V, Unew, Vnew
     real(8), allocatable, dimension(:)  :: X, Y
 
@@ -36,11 +38,16 @@ program main
     h = 45
     c = 5
     eps = 0.001
+    is_square_hot = 0
+    is_planer_hot = 0
+    width = 1.
+    height = 5.
 
     call read_inp(a, c, h, eps, d,&
                  &xlen, ylen, xgrid, ygrid, Tin, fuel,&
                  &max_gen, print_gen, dt,&
-                 &n_hot, lrnd, size, Thot)
+                 &n_hot, lrnd, size, Thot,&
+                 &is_square_hot, is_planer_hot, width, height)
 
     allocate( X(xgrid) )
     allocate( Y(ygrid) )
@@ -52,12 +59,18 @@ program main
     X = linspace(-xlen/2, xlen/2, xgrid)
     Y = linspace(-ylen/2, ylen/2, ygrid)
     call initialize_uv(U, V, Tin, fuel)
-    if (lrnd == 1) then
-        call make_n_spots(U, X, Y, size, Thot, n_hot)
-    else if (lrnd == 0) then
-        call make_hotspot(U, X, Y, size, Thot)
+    if (is_planer_hot == 1) then
+        call make_hotplane(U, X, Y, width, height, Thot)
+    else if (is_square_hot == 1) then
+        if (lrnd == 1) then
+            call make_n_spots(U, X, Y, size, Thot, n_hot)
+        else if (lrnd == 0) then
+            call make_hotspot(U, X, Y, size, Thot)
+        else
+            call stop_error('Invarid lrand.')
+        end if
     else
-        call stop_error('Invarid lrand.')
+        call stop_error('Invarid hotspot condition')
     end if
 
     call out_vtk(gen, U, X, Y)
@@ -150,6 +163,24 @@ subroutine make_n_spots(U, X, Y, size, Thot, n)
     return
 end subroutine make_n_spots
 
+subroutine make_hotplane(U, X, Y, width, height, Thot)
+    real(8):: U(:,:), X(:), Y(:)
+    real(8):: width, height, Thot
+    real(8):: x_centor
+    integer:: i, j
+
+    x_centor = ( minval(X) + maxval(X) )/2.
+    do i = 1, ubound(U,1)
+        do j = 1, ubound(U,2)
+            if( ( abs(X(i)-x_centor) <= width/2. )&
+         &.and. ( height-Y(j) >= 0 ) )then
+                U(i, j) = Thot
+            endif
+        enddo
+    enddo
+
+end subroutine make_hotplane
+
 subroutine timestep(U, V, X, Y, d, dt, Unew, Vnew)
     real(8):: U(:,:), V(:,:), Unew(:,:), Vnew(:,:), X(:), Y(:)
     real(8):: dt
@@ -234,7 +265,8 @@ end subroutine out_vtk
 subroutine read_inp(a, c, h, eps, d,&
                    &xlen, ylen, xgrid, ygrid, Tin, fuel,&
                    &max_gen, print_gen, dt,&
-                   &n_hot, lrnd, size, Thot)
+                   &n_hot, lrnd, size, Thot,&
+                   &is_square_hot, is_planer_hot, width, height)
     implicit none
     integer:: line, ierr, pos
     character(100):: buffer, keyword, err_msg
@@ -248,6 +280,8 @@ subroutine read_inp(a, c, h, eps, d,&
     integer:: n_hot
     real(8):: d
     integer:: lrnd
+    integer:: is_square_hot, is_planer_hot
+    real(8):: width, height
     integer, parameter:: linp=124,          lout=125
     character(20)     :: inp_file='DT.inp', out_file='DT.out'
 
@@ -338,6 +372,18 @@ subroutine read_inp(a, c, h, eps, d,&
                     !##
                     !##    Initial conditions
                     !##
+                    !   planer hot spot
+                    case ('PLHT')
+                        is_planer_hot = 1
+                    !   plane width
+                    case ('WIDTH')
+                        read(buffer, *, iostat=ierr) width
+                    !   plane height
+                    case ('HEIGHT')
+                        read(buffer, *, iostat=ierr) height
+                    !   square hot spot
+                    case ('SQHT')
+                        is_square_hot = 1
                     !   Initial hotspots number
                     case ('NHOT')
                         read(buffer, *, iostat=ierr) n_hot
